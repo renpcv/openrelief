@@ -169,6 +169,32 @@ window.addEventListener('keydown', (e) => {
 
 // ------------------------------------------------------------------ settings
 
+// Each slider with a data-hint gets an info button that opens the hint under
+// it. The button and hint go after the slider in the markup, so the label
+// still belongs to the slider.
+for (const label of document.querySelectorAll<HTMLLabelElement>('label.slider[data-hint]')) {
+  const name = label.firstChild?.textContent?.trim() ?? 'this setting';
+  const hint = document.createElement('p');
+  hint.className = 'hint';
+  hint.hidden = true;
+  hint.textContent = label.dataset.hint!;
+  hint.id = `${label.querySelector('input')!.id}-hint`;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'info';
+  button.textContent = 'ⓘ';
+  button.setAttribute('aria-label', `About ${name}`);
+  button.setAttribute('aria-expanded', 'false');
+  button.setAttribute('aria-controls', hint.id);
+  button.onclick = (e) => {
+    e.preventDefault();
+    hint.hidden = !hint.hidden;
+    button.setAttribute('aria-expanded', String(!hint.hidden));
+  };
+  hint.onclick = (e) => e.preventDefault(); // reading the hint shouldn't grab the slider
+  label.append(button, hint);
+}
+
 function refreshSliders(): void {
   for (const label of document.querySelectorAll<HTMLLabelElement>('label.slider:not(.custom)')) {
     label.querySelector('output')!.textContent = label.querySelector('input')!.value;

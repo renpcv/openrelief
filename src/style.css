@@ -1,4 +1,4 @@
-/* Black page, the browser's default serif, muted text with brighter values,
+/* Black page, the browser's default sans-serif, muted text with brighter values,
    underlined text links instead of boxed buttons, square corners, no panels
    or dividers. */
 :root {
@@ -13,7 +13,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--muted); }
 body {
-  font: 12px/1.45 serif;
+  font: 12px/1.45 sans-serif;
   display: grid;
   grid-template-columns: var(--config-width) 1fr;
 }
@@ -34,7 +34,8 @@ button, a {
   text-decoration: underline; text-underline-offset: 3px; white-space: nowrap;
 }
 button:hover:not(:disabled), a:hover { color: var(--fg); }   /* every text link brightens on hover */
-button:disabled { cursor: default; opacity: 0.45; }
+/* a dimmer colour rather than opacity, which some browsers repaint unevenly in a scrolling column */
+button:disabled { cursor: default; color: color-mix(in srgb, var(--fg) 25%, transparent); }
 button.on { color: var(--fg); text-decoration: none; }   /* the active choice */
 
 /* the one boxed button: the main action */
@@ -57,9 +58,16 @@ input[type='number'] {
   border: none; border-bottom: 1px solid var(--muted); padding: 2px 0;
 }
 input[type='number']:focus { border-bottom-color: var(--fg); }
-label.slider output { float: right; color: var(--fg); }
+/* slider: name, info button, value on one line; the slider under it; its hint, when open, under that */
+label.slider { display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; column-gap: 6px; }
+label.slider output { grid-row: 1; grid-column: 3; justify-self: end; color: var(--fg); }
+label.slider .info { grid-row: 1; grid-column: 2; padding: 0; text-decoration: none; line-height: 1; }
+label.slider .info[aria-expanded='true'] { color: var(--fg); }
+label.slider input { grid-row: 2; grid-column: 1 / -1; }
+label.slider .hint { grid-row: 3; grid-column: 1 / -1; margin: 6px 0 2px; cursor: default; }
+label.slider .hint[hidden] { display: none; }
 input[type='range'] { display: block; width: 100%; margin: 3px 0 0; accent-color: var(--muted); }
-label.off { display: none; }
+label.off, label.slider.off { display: none; }
 label.check { display: flex; align-items: center; gap: 6px; margin-top: 8px; cursor: pointer; }
 label.check input { margin: 0; accent-color: var(--muted); }
 

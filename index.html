@@ -25,7 +25,7 @@
           <button data-mode="rotate">Rotate</button>
           <button data-mode="scale">Scale</button>
         </div>
-        <label class="slider custom">Uniform scale <output id="uniformScaleValue"></output>
+        <label class="slider custom" data-hint="Scales the selected model evenly. It only matters relative to other models in the scene; the finished size is set under Size.">Uniform scale <output id="uniformScaleValue"></output>
           <input id="uniformScale" type="range" min="-1.3" max="1.3" step="0.005" value="0" disabled />
         </label>
         <div class="row" id="views" role="group" aria-label="View direction">
@@ -56,40 +56,39 @@
             <option>8192</option>
           </select>
         </label>
-        <label class="slider" data-for-mode="compressed">Depth compression <output></output>
+        <label class="slider" data-for-mode="compressed" data-hint="How strongly steep slopes are flattened compared with gentle ones. Higher gives a shallower-looking relief that keeps fine detail readable; 0 keeps true proportions.">Depth compression <output></output>
           <input id="compression" type="range" min="0" max="20" step="0.5" value="5" />
         </label>
-        <label class="slider">Contour prominence <output></output>
+        <label class="slider" data-hint="Height of the step where a model meets the background, as a percentage of the long side. Higher makes outlines stand out more.">Contour prominence <output></output>
           <input id="silhouette" type="range" min="0" max="3" step="0.05" value="0.4" />
         </label>
-        <label class="slider" data-for-mode="compressed">Inner edge prominence <output></output>
+        <label class="slider" data-for-mode="compressed" data-hint="Height of the step where one part passes in front of another, as a percentage of the long side. Higher separates overlapping parts more clearly.">Inner edge prominence <output></output>
           <input id="occlusion" type="range" min="0" max="3" step="0.05" value="0.4" />
         </label>
-        <label class="slider" data-for-mode="compressed">Level tilted surfaces (%) <output></output>
+        <label class="slider" data-for-mode="compressed" data-hint="Takes the lean out of surfaces tilted towards or away from you, so depth goes to their detail instead. Straight edges stay straight.">Level tilted surfaces (%) <output></output>
           <input id="levelling" type="range" min="0" max="100" step="5" value="100" />
         </label>
-        <label class="slider" data-for-mode="compressed">Outline pinning (%) <output></output>
+        <label class="slider" data-for-mode="compressed" data-hint="How rigidly outlines are held at one height. Lower keeps straight edges straight right to their ends. Higher flattens the outline but bends what meets it; 100% is also the fastest to generate.">Outline pinning (%) <output></output>
           <input id="pinning" type="range" min="0" max="100" step="5" value="30" />
         </label>
-        <label class="slider">Detail emphasis <output></output>
+        <label class="slider" data-hint="Exaggerates small surface features such as texture and creases. 0 turns it off.">Detail emphasis <output></output>
           <input id="detail" type="range" min="0" max="3" step="0.05" value="0.5" />
         </label>
-        <label class="slider">Smoothing (px) <output></output>
+        <label class="slider" data-hint="Blurs the finished relief by this many pixels, softening jagged outlines and sharp steps. Useful when the tool or printer cannot reproduce fine detail.">Smoothing (px) <output></output>
           <input id="smoothing" type="range" min="0" max="5" step="0.25" value="0" />
         </label>
-        <label class="slider">Margin (%) <output></output>
+        <label class="slider" data-hint="Empty background around the models, as a percentage of the long side.">Margin (%) <output></output>
           <input id="margin" type="range" min="0" max="25" step="1" value="5" />
         </label>
         <details>
           <summary>Advanced</summary>
-          <label class="slider">Edge detection slope <output></output>
+          <label class="slider" data-hint="How steep a change in depth must be before it counts as an edge between parts rather than a surface. Lower treats more steep faces as edges.">Edge detection slope <output></output>
             <input id="tau" type="range" min="1" max="30" step="0.5" value="6" />
           </label>
-          <label class="slider">Detail radius (%) <output></output>
+          <label class="slider" data-hint="The size of feature that Detail emphasis acts on, as a percentage of the long side.">Detail radius (%) <output></output>
             <input id="detailRadius" type="range" min="0.2" max="5" step="0.1" value="1" />
           </label>
         </details>
-        <p class="hint">Levelling takes the lean out of tilted surfaces so depth goes to their detail. Lower pinning keeps straight edges straight right to their ends; higher holds every outline at the same height, which bends them.</p>
         <button id="generate" class="primary" disabled>Generate relief</button>
         <div id="progress" hidden><div></div><span></span></div>
       </section>
