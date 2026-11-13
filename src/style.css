@@ -78,9 +78,10 @@ summary:hover { color: var(--fg); }
 
 /* About: references open under their link, then the source download */
 #about { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-#references { line-height: 1.55; margin: 2px 0 4px; }
+#references { line-height: 1.55; margin: 4px 0 8px; padding: 10px 12px; border: 1px solid var(--line); }
 #references[hidden] { display: none; }
 #references p { margin: 0 0 8px; }
+#references p:last-child { margin-bottom: 0; }
 #references a { white-space: normal; }
 #references button { padding: 0; margin-left: 0.4em; }
 
