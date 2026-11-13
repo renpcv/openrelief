@@ -21,6 +21,21 @@ interface Relief {
   height: number;
   /** Normalised heights, 0..1. */
   data: Float32Array;
+  /** Base name for exported files, e.g. "vase_relief". */
+  name: string;
+}
+
+/**
+ * Export name: the first imported model's file name (without its extension)
+ * followed by "_relief", or just "relief" if there is nothing usable.
+ */
+function exportBaseName(): string {
+  const first = view.models[0]?.name ?? '';
+  const stem = first
+    .replace(/\.(obj|stl)$/i, '')
+    .replace(/[\\/:*?"<>|]/g, '_') // characters not allowed in file names
+    .trim();
+  return stem ? `${stem}_relief` : 'relief';
 }
 let relief: Relief | null = null;
 let worker: Worker | null = null;
@@ -220,6 +235,7 @@ function generate(): void {
     return;
   }
   const { width, height, depth, mask } = capture;
+  const name = exportBaseName(); // as the scene was when the relief was made
   worker = new Worker(new URL('./relief/worker.ts', import.meta.url), { type: 'module' });
   generateBtn.disabled = true;
   const finish = () => {
@@ -236,7 +252,7 @@ function generate(): void {
       setStatus(`Relief failed: ${m.message}`, true);
     } else {
       finish();
-      relief = { width, height, data: m.height };
+      relief = { width, height, data: m.height, name };
       updatePreview();
       reliefTab.disabled = false;
       for (const b of document.querySelectorAll<HTMLButtonElement>('#exports button')) b.disabled = false;
@@ -285,24 +301,24 @@ function download(data: Blob | ArrayBuffer, name: string): void {
 
 async function exportRelief(format: string): Promise<void> {
   if (!relief) return;
-  const { width: w, height: h, data } = relief;
+  const { width: w, height: h, data, name } = relief;
   const dims = readDimensions(relief);
   setStatus(`Exporting ${format.toUpperCase()}…`);
   await new Promise((r) => setTimeout(r)); // let the status paint
   try {
     if (format === 'stl' || format === 'obj') {
       const grid = buildGrid(data, w, h, dims, Number($<HTMLSelectElement>('#meshRes').value));
-      download(format === 'stl' ? writeStl(grid) : writeObj(grid), `relief.${format}`);
+      download(format === 'stl' ? writeStl(grid) : writeObj(grid), `${name}.${format}`);
     } else {
       // Depth maps: white / larger = closer to the viewer.
       const scale = format === 'png' ? 1 : dims.depth;
       const values = new Float32Array(data.length);
       for (let i = 0; i < data.length; i++) values[i] = (dims.sunken ? 1 - data[i] : data[i]) * scale;
-      if (format === 'png') download(await writePng16(values, w, h), 'relief.png');
-      else if (format === 'exr') download(writeExr(values, w, h), 'relief.exr');
-      else download(writePfm(values, w, h), 'relief.pfm');
+      if (format === 'png') download(await writePng16(values, w, h), `${name}.png`);
+      else if (format === 'exr') download(writeExr(values, w, h), `${name}.exr`);
+      else download(writePfm(values, w, h), `${name}.pfm`);
     }
-    setStatus(`Exported relief.${format}`);
+    setStatus(`Exported ${name}.${format}`);
   } catch (err) {
     setStatus(`Export failed: ${err instanceof Error ? err.message : err}`, true);
   }
@@ -310,5 +326,5 @@ async function exportRelief(format: string): Promise<void> {
 segmented('#exports', (b) => void exportRelief(b.dataset.format!), false);
 
 // Debug handle for the console and automated checks; index.html also uses it to tell that the app started.
-Object.assign(window, { openrelief: { view, getRelief: () => relief, generate } });
+Object.assign(window, { openrelief: { view, getRelief: () => relief, generate, exportBaseName } });
 setStatus('Ready: import a model or try the demo');
