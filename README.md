@@ -41,7 +41,8 @@ publishing so the download matches the code.
     meets the background), inner edge prominence (steps where one part passes
     in front of another), detail emphasis, smoothing and margin.
 - **Size** the result in millimetres: long side, relief depth, base plate, and
-  raised or sunken. Hollows that end up deeper than the background (the inside
+  raised or sunken. Depth and base plate scale with the long side by default,
+  so the piece keeps its proportions. Hollows that end up deeper than the background (the inside
   of an open box, say) keep their shape and sit below the background plane.
 - **Export** a watertight STL or OBJ solid, a 16-bit PNG depth map, or 32-bit
   float EXR / PFM depth maps.

@@ -256,6 +256,19 @@ function generate(): void {
 }
 generateBtn.onclick = generate;
 
+// Changing the long side rescales the relief depth and base plate with it, so
+// the piece keeps its proportions (a 3 mm piece shouldn't keep a 6 mm relief).
+let lastSize = num('size');
+input('size').addEventListener('change', () => {
+  const size = num('size');
+  if (!(size > 0)) return;
+  if (input('linkSize').checked && lastSize > 0 && size !== lastSize) {
+    const factor = size / lastSize;
+    for (const id of ['depth', 'base']) input(id).value = String(Number((num(id) * factor).toPrecision(4)));
+  }
+  lastSize = size;
+});
+
 for (const id of ['size', 'depth', 'base', 'direction']) input(id).addEventListener('change', updatePreview);
 
 // ------------------------------------------------------------------ export

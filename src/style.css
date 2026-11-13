@@ -61,6 +61,8 @@ input[type='number']:focus { border-bottom-color: var(--fg); }
 label.slider output { float: right; color: var(--fg); }
 input[type='range'] { display: block; width: 100%; margin: 3px 0 0; accent-color: var(--muted); }
 label.off { display: none; }
+label.check { display: flex; align-items: center; gap: 6px; margin-top: 8px; cursor: pointer; }
+label.check input { margin: 0; accent-color: var(--muted); }
 
 details { margin: 2px 0 8px; }
 summary { cursor: pointer; margin-bottom: 8px; }
