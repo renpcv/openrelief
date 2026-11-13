@@ -187,6 +187,9 @@ function readParams(): ReliefParams {
     silhouetteStep: num('silhouette') / 100,
     occlusionStep: num('occlusion') / 100,
     discontinuitySlope: num('tau'),
+    // 0% -> weight 0.001 (outline height free to vary), 100% -> weight 1 (rigidly pinned)
+    edgeWeight: 10 ** (-3 * (1 - num('pinning') / 100)),
+    levelling: num('levelling') / 100,
     detail: num('detail'),
     detailRadius: num('detailRadius') / 100,
     smoothing: num('smoothing'),

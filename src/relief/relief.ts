@@ -16,7 +16,7 @@
  * every output resolution.
  */
 
-import { solvePoisson } from './poisson';
+import { type EdgeWeights, solvePoisson } from './poisson';
 
 export type ReliefMode = 'compressed' | 'raw';
 
@@ -33,6 +33,23 @@ export interface ReliefParams {
   occlusionStep: number;
   /** Slope above which an edge counts as a depth discontinuity. */
   discontinuitySlope: number;
+  /**
+   * How strongly the steps at depth discontinuities (outlines and occlusion
+   * edges) are enforced, from 1 (as strongly as the surface's own shape) down
+   * towards 0. Forcing every outline to sit at the same small height above
+   * the background contradicts a surface that is, say, tilted away from the
+   * viewer, and at 1 that contradiction is spread into the surface as bending
+   * near its ends. Lower values let the step height vary along the outline
+   * instead, so straight things stay straight.
+   */
+  edgeWeight: number;
+  /**
+   * How much of each surface's overall tilt (towards or away from the viewer)
+   * to remove before compressing, 0..1. A tilted surface otherwise spends the
+   * relief's depth on the tilt instead of on its detail. The tilt is removed
+   * as a plane per continuous surface, so straight edges stay straight.
+   */
+  levelling: number;
   /** Unsharp-mask amount applied to the result (0 = off). */
   detail: number;
   /** Unsharp-mask radius, as a fraction of the image's long side. */
@@ -47,6 +64,8 @@ export const defaultParams: ReliefParams = {
   silhouetteStep: 0.004,
   occlusionStep: 0.004,
   discontinuitySlope: 6,
+  edgeWeight: 0.0063,
+  levelling: 1,
   detail: 0.5,
   detailRadius: 0.01,
   smoothing: 0,
@@ -93,8 +112,9 @@ export function generateRelief(
     for (let i = 0; i < n; i++) if (mask[i]) out[i] = depth[i] - min + lift;
   } else {
     onProgress('Compressing gradients', 0);
-    const rhs = buildRhs(w, h, depth, mask, params, longSide);
+    const { rhs, weights } = buildSystem(w, h, depth, mask, params, longSide);
     const sol = solvePoisson(w, h, mask, rhs, {
+      weights,
       onProgress: (f) => onProgress('Integrating', f),
     });
     out = sol.u;
@@ -151,71 +171,198 @@ export function generateRelief(
   return { height: out, width: w, heightPx: h, background: level, solverCycles: cycles, solverResidual: rel };
 }
 
-/** Target difference (to - from) for one pixel edge. */
+/**
+ * Splits the model into continuous surfaces (pixels connected without
+ * crossing a depth discontinuity) and fits a plane to each one.
+ * Returns each pixel's surface index and each surface's slope in x and y.
+ */
+function fitSurfaceTilts(
+  w: number,
+  h: number,
+  depth: Float32Array,
+  mask: Uint8Array,
+  tau: number,
+): { label: Int32Array; tiltX: number[]; tiltY: number[] } {
+  const n = w * h;
+  const label = new Int32Array(n).fill(-1);
+  const stack = new Int32Array(n);
+  const tiltX: number[] = [];
+  const tiltY: number[] = [];
+  for (let start = 0; start < n; start++) {
+    if (!mask[start] || label[start] >= 0) continue;
+    const id = tiltX.length;
+    let top = 0;
+    stack[top++] = start;
+    label[start] = id;
+    // Sums for a least-squares plane fit, with coordinates relative to the start pixel.
+    const x0 = start % w;
+    const y0 = (start - x0) / w;
+    const z0 = depth[start];
+    let cnt = 0, sx = 0, sy = 0, sz = 0, sxx = 0, sxy = 0, syy = 0, sxz = 0, syz = 0;
+    while (top > 0) {
+      const i = stack[--top];
+      const xi = i % w;
+      const x = xi - x0;
+      const y = (i - xi) / w - y0;
+      const d = depth[i];
+      const z = d - z0;
+      cnt++; sx += x; sy += y; sz += z; sxx += x * x; sxy += x * y; syy += y * y; sxz += x * z; syz += y * z;
+      if (xi > 0) {
+        const j = i - 1;
+        if (mask[j] && label[j] < 0 && Math.abs(depth[j] - d) <= tau) { label[j] = id; stack[top++] = j; }
+      }
+      if (xi < w - 1) {
+        const j = i + 1;
+        if (mask[j] && label[j] < 0 && Math.abs(depth[j] - d) <= tau) { label[j] = id; stack[top++] = j; }
+      }
+      if (i >= w) {
+        const j = i - w;
+        if (mask[j] && label[j] < 0 && Math.abs(depth[j] - d) <= tau) { label[j] = id; stack[top++] = j; }
+      }
+      if (i < n - w) {
+        const j = i + w;
+        if (mask[j] && label[j] < 0 && Math.abs(depth[j] - d) <= tau) { label[j] = id; stack[top++] = j; }
+      }
+    }
+    // Covariances; the plane's slopes solve the 2x2 normal equations.
+    const cxx = sxx - (sx * sx) / cnt;
+    const cxy = sxy - (sx * sy) / cnt;
+    const cyy = syy - (sy * sy) / cnt;
+    const cxz = sxz - (sx * sz) / cnt;
+    const cyz = syz - (sy * sz) / cnt;
+    // Solve along the principal axes of the surface's footprint, using only
+    // the directions in which it has real extent (over ~2 px RMS). A wide
+    // surface gets a full plane; a narrow strip gets the slope along its
+    // length only; a speck gets nothing.
+    let ax = 0;
+    let ay = 0;
+    if (cnt >= 64) {
+      const half = (cxx + cyy) / 2;
+      const root = Math.sqrt(Math.max(0, ((cxx - cyy) / 2) ** 2 + cxy * cxy));
+      const minExtent = 4 * cnt;
+      for (const lambda of [half + root, half - root]) {
+        if (lambda < minExtent) continue;
+        // Eigenvector of [[cxx, cxy], [cxy, cyy]] for this eigenvalue.
+        let vx = cxy;
+        let vy = lambda - cxx;
+        if (Math.abs(vx) + Math.abs(vy) < 1e-9 * lambda) {
+          vx = lambda - cyy;
+          vy = cxy;
+        }
+        if (Math.abs(vx) + Math.abs(vy) < 1e-9 * lambda) {
+          // Isotropic footprint: any axis is principal.
+          vx = lambda === half + root ? 1 : 0;
+          vy = 1 - vx;
+        }
+        const len = Math.hypot(vx, vy);
+        vx /= len;
+        vy /= len;
+        const slope = (vx * cxz + vy * cyz) / lambda;
+        ax += slope * vx;
+        ay += slope * vy;
+      }
+    }
+    tiltX.push(ax);
+    tiltY.push(ay);
+  }
+  return { label, tiltX, tiltY };
+}
+
+/** Set by edgeTarget: whether the edge it just looked at is a depth discontinuity. */
+let edgeIsStep = false;
+
+/**
+ * Target difference (to - from) for one pixel edge. `tilt` is the slope to
+ * take out of an ordinary surface edge before compressing it.
+ */
 function edgeTarget(
   dFrom: number,
   dTo: number,
   mFrom: number,
   mTo: number,
+  tilt: number,
   alpha: number,
   tau: number,
   silPx: number,
   occPx: number,
 ): number {
+  edgeIsStep = true;
   if (!mFrom && !mTo) return 0;
   if (!mFrom) return silPx;
   if (!mTo) return -silPx;
-  const g = dTo - dFrom;
-  const a = Math.abs(g);
-  if (a > tau) return g > 0 ? Math.min(a, occPx) : -Math.min(a, occPx);
+  const raw = dTo - dFrom;
+  const size = Math.abs(raw);
+  if (size > tau) return raw > 0 ? Math.min(size, occPx) : -Math.min(size, occPx);
+  edgeIsStep = false;
+  const g = raw - tilt;
   if (alpha <= 0) return g;
+  const a = Math.abs(g);
   const c = Math.log1p(alpha * a) / alpha;
   return g > 0 ? c : -c;
 }
 
-function buildRhs(
+function buildSystem(
   w: number,
   h: number,
   depth: Float32Array,
   mask: Uint8Array,
   p: ReliefParams,
   longSide: number,
-): Float32Array {
+): { rhs: Float32Array; weights?: EdgeWeights } {
   const rhs = new Float32Array(w * h);
+  // Weight of discontinuity edges; ordinary surface edges always weigh 1.
+  const ws = Math.min(1, Math.max(1e-4, p.edgeWeight));
+  const weighted = ws < 1;
+  const right = weighted ? new Float32Array(w * h).fill(1) : null;
+  const down = weighted ? new Float32Array(w * h).fill(1) : null;
+  const level = Math.min(1, Math.max(0, p.levelling));
+  const tilts = level > 0 ? fitSurfaceTilts(w, h, depth, mask, p.discontinuitySlope) : null;
   const silPx = p.silhouetteStep * longSide;
   const occPx = p.occlusionStep * longSide;
   const alpha = p.compression;
   const tau = p.discontinuitySlope;
-  // Minimising sum over edges of (u[q] - u[p] - t)^2 gives, for each pixel,
-  // 4u - sum(neighbours) = -(sum of targets pointing away from the pixel).
+  // Minimising sum over edges of weight * (u[q] - u[p] - t)^2 gives, for each
+  // pixel, sum(weight * (u - neighbour)) = -(sum of weight * target pointing
+  // away from the pixel).
   for (let y = 0; y < h; y++) {
     const row = y * w;
     for (let x = 0; x < w; x++) {
       const i = row + x;
       const mi = mask[i];
+      const surface = tilts && mi ? tilts.label[i] : -1;
+      const tx = surface >= 0 ? level * tilts!.tiltX[surface] : 0;
+      const ty = surface >= 0 ? level * tilts!.tiltY[surface] : 0;
       if (x < w - 1) {
         const j = i + 1;
-        const t = edgeTarget(depth[i], depth[j], mi, mask[j], alpha, tau, silPx, occPx);
+        let t = edgeTarget(depth[i], depth[j], mi, mask[j], tx, alpha, tau, silPx, occPx);
+        if (edgeIsStep) {
+          t *= ws;
+          if (right) right[i] = ws;
+        }
         rhs[i] -= t;
         rhs[j] += t;
       } else if (mi) {
-        rhs[i] += silPx; // image border acts as background
+        rhs[i] += ws * silPx; // image border acts as background
       }
       if (y < h - 1) {
         const j = i + w;
-        const t = edgeTarget(depth[i], depth[j], mi, mask[j], alpha, tau, silPx, occPx);
+        let t = edgeTarget(depth[i], depth[j], mi, mask[j], ty, alpha, tau, silPx, occPx);
+        if (edgeIsStep) {
+          t *= ws;
+          if (down) down[i] = ws;
+        }
         rhs[i] -= t;
         rhs[j] += t;
       } else if (mi) {
-        rhs[i] += silPx;
+        rhs[i] += ws * silPx;
       }
       if (mi) {
-        if (x === 0) rhs[i] += silPx;
-        if (y === 0) rhs[i] += silPx;
+        if (x === 0) rhs[i] += ws * silPx;
+        if (y === 0) rhs[i] += ws * silPx;
       }
     }
   }
-  return rhs;
+  return { rhs, weights: right && down ? { right, down, border: ws } : undefined };
 }
 
 /**

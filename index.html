@@ -9,8 +9,7 @@
   <body>
     <aside id="sidebar">
       <header>
-        <h1>OpenRelief</h1>
-        <p>3D model to bas-relief</p>
+        <h1>3D model to bas-relief tool</h1>
       </header>
 
       <section>
@@ -66,6 +65,12 @@
         <label class="slider" data-for-mode="compressed">Inner edge prominence <output></output>
           <input id="occlusion" type="range" min="0" max="3" step="0.05" value="0.4" />
         </label>
+        <label class="slider" data-for-mode="compressed">Level tilted surfaces (%) <output></output>
+          <input id="levelling" type="range" min="0" max="100" step="5" value="100" />
+        </label>
+        <label class="slider" data-for-mode="compressed">Outline pinning (%) <output></output>
+          <input id="pinning" type="range" min="0" max="100" step="5" value="30" />
+        </label>
         <label class="slider">Detail emphasis <output></output>
           <input id="detail" type="range" min="0" max="3" step="0.05" value="0.5" />
         </label>
@@ -84,6 +89,7 @@
             <input id="detailRadius" type="range" min="0.2" max="5" step="0.1" value="1" />
           </label>
         </details>
+        <p class="hint">Levelling takes the lean out of tilted surfaces so depth goes to their detail. Lower pinning keeps straight edges straight right to their ends; higher holds every outline at the same height, which bends them.</p>
         <button id="generate" class="primary" disabled>Generate relief</button>
         <div id="progress" hidden><div></div><span></span></div>
       </section>

@@ -40,6 +40,10 @@ publishing so the download matches the code.
   - Controls for depth compression, contour prominence (the step where a model
     meets the background), inner edge prominence (steps where one part passes
     in front of another), detail emphasis, smoothing and margin.
+  - *Level tilted surfaces* removes each continuous surface's overall lean, so
+    depth is spent on its detail. *Outline pinning* sets how rigidly outlines
+    are held at one height: low values keep straight edges straight to their
+    ends, high values flatten the outline but bend what meets it.
 - **Size** the result in millimetres: long side, relief depth, base plate, and
   raised or sunken. Depth and base plate scale with the long side by default,
   so the piece keeps its proportions. Hollows that end up deeper than the background (the inside
@@ -52,10 +56,12 @@ publishing so the download matches the code.
 1. `src/viewport.ts` renders the scene's depth with an orthographic camera into
    a float texture (in tiles, so the output can exceed the GPU texture limit).
 2. `src/relief/relief.ts` takes the gradients of that height field, replaces
-   depth discontinuities with small controlled steps, compresses the remaining
-   slopes with `s -> log(1 + a*s) / a`, and
+   depth discontinuities with small controlled steps, removes each continuous
+   surface's best-fit tilt, compresses the remaining slopes with
+   `s -> log(1 + a*s) / a`, and
 3. `src/relief/poisson.ts` integrates the modified gradients back into a height
-   field by solving a Poisson equation with the background pinned flat
+   field by solving a weighted Poisson equation (discontinuity steps count
+   for less than surface shape) with the background pinned flat
    (conjugate gradients preconditioned by aggregation multigrid), in a worker.
 4. `src/export/` turns the result into meshes and depth maps.
 

@@ -65,8 +65,8 @@ describe('generateRelief', () => {
       max = Math.max(max, r.height[i]);
     }
     expect(max).toBeCloseTo(1, 5);
-    // A convex shape has no real recesses, so the background is (almost) the lowest level.
-    expect(r.background).toBeLessThan(0.01);
+    // A convex shape has no real recesses, so the background stays near the lowest level.
+    expect(r.background).toBeLessThan(0.15);
     // The sphere's centre should be its highest region.
     const c = (size >> 1) * size + (size >> 1);
     expect(r.height[c]).toBeGreaterThan(0.9);
@@ -127,7 +127,13 @@ describe('generateRelief', () => {
         const rim = x < 22 || x >= 106 || y < 22 || y >= 106;
         depth[i] = rim ? 600 : 500 - (x - 22) * 5;
       }
-    const r = generateRelief(size, size, depth, mask, { ...defaultParams, detail: 0 });
+    // (Levelling is off here: it would, rightly, flatten the evenly sloping floor.)
+    const r = generateRelief(size, size, depth, mask, {
+      ...defaultParams,
+      detail: 0,
+      levelling: 0,
+      edgeWeight: 1,
+    });
     // The background plane sits above the lowest point...
     expect(r.background).toBeGreaterThan(0.05);
     expect(r.height[0]).toBeCloseTo(r.background, 6);
@@ -164,6 +170,46 @@ describe('generateRelief', () => {
     let max = 0;
     for (const v of soft.height) max = Math.max(max, v);
     expect(max).toBeCloseTo(1, 5);
+  });
+
+  it('keeps the ridges of a tilted corrugated sheet uniform to their ends', () => {
+    // A corrugated sheet tilted away from the viewer along its ridges, with a slanted outline.
+    const size = 256;
+    const scene = () => {
+      const depth = new Float32Array(size * size);
+      const mask = new Uint8Array(size * size);
+      for (let y = 30; y <= 225; y++)
+        for (let x = 0; x < size; x++) {
+          const u = x - 30 - (y - 30) * 0.3; // position across the ridges
+          if (u < 0 || u > 150) continue;
+          const p = u % 30;
+          const ridge = p < 10 ? p : p < 15 ? 10 : p < 25 ? 25 - p : 0; // 10 px high
+          mask[y * size + x] = 1;
+          depth[y * size + x] = 200 - (y - 30) * 0.8 + ridge;
+        }
+      return { depth, mask };
+    };
+    /** Ridge height (top minus the valley beside it) at row y, as a fraction of the relief's depth. */
+    const ridgeHeight = (r: { height: Float32Array }, y: number) => {
+      const x0 = 30 + (y - 30) * 0.3;
+      return r.height[y * size + Math.round(x0 + 72)] - r.height[y * size + Math.round(x0 + 88)];
+    };
+    const a = scene();
+    const pinned = generateRelief(size, size, a.depth, a.mask, {
+      ...defaultParams,
+      detail: 0,
+      edgeWeight: 1,
+      levelling: 0,
+    });
+    const b = scene();
+    const free = generateRelief(size, size, b.depth, b.mask, { ...defaultParams, detail: 0 });
+    // Rigid pinning squashes the ridges towards the sheet's ends...
+    expect(ridgeHeight(pinned, 34) / ridgeHeight(pinned, 128)).toBeLessThan(0.75);
+    // ...the defaults keep them nearly the same height all the way along,
+    for (const y of [34, 60, 200, 221])
+      expect(ridgeHeight(free, y) / ridgeHeight(free, 128)).toBeGreaterThan(0.85);
+    // and still spend a good share of the depth on the ridges rather than on the tilt.
+    expect(ridgeHeight(free, 128)).toBeGreaterThan(0.3);
   });
 
   it('raw mode is a linear rescale', () => {

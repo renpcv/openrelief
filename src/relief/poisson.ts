@@ -6,6 +6,11 @@
  *
  * Pixels beyond the image border count as "outside".
  *
+ * Optionally each pixel edge carries a weight (how strongly its target
+ * difference is enforced); the equation then reads
+ *
+ *     sum over neighbours n of weight(p,n) * (u[p] - u[n]) = rhs[p].
+ *
  * Method: conjugate gradients preconditioned by one multigrid V-cycle.
  * The coarse grids are built by aggregation (each coarse cell is the union of
  * up to 2x2 fine cells) with Galerkin coarse operators, so irregular
@@ -17,7 +22,7 @@ interface Level {
   w: number;
   h: number;
   mask: Uint8Array;
-  /** Operator diagonal; null on the finest level, where it is 4 everywhere. */
+  /** Operator diagonal; null when every edge has weight 1 (finest level only), where it is 4 everywhere. */
   diag: Float32Array | null;
   /** Weight of the link between a cell and its right neighbour (0 if none). */
   wR: Float32Array | null;
@@ -28,7 +33,18 @@ interface Level {
   res: Float32Array;
 }
 
+export interface EdgeWeights {
+  /** Weight of the edge between each pixel and its right neighbour. */
+  right: Float32Array;
+  /** Weight of the edge between each pixel and the one below it. */
+  down: Float32Array;
+  /** Weight of the edges that cross the image border. */
+  border: number;
+}
+
 export interface PoissonOptions {
+  /** Per-edge weights; omitted means every edge has weight 1. */
+  weights?: EdgeWeights;
   /** Stop when the residual norm has dropped by this factor. */
   tolerance?: number;
   maxIterations?: number;
@@ -65,14 +81,16 @@ function coarsen(f: Level): Level {
       cmask[c] = 1;
       diag[c] += f.diag ? f.diag[i] : 4;
       if (x < w - 1) {
-        const wt = f.wR ? f.wR[i] : mask[i + 1];
+        // Links to cells outside the mask are not unknown-to-unknown links:
+        // they stay in the diagonal, pulling the cell towards zero.
+        const wt = !mask[i + 1] ? 0 : f.wR ? f.wR[i] : 1;
         if (wt) {
           if (x & 1) wR[c] += wt;
           else diag[c] -= 2 * wt;
         }
       }
       if (y < h - 1) {
-        const wt = f.wD ? f.wD[i] : mask[i + w];
+        const wt = !mask[i + w] ? 0 : f.wD ? f.wD[i] : 1;
         if (wt) {
           if (y & 1) wD[c] += wt;
           else diag[c] -= 2 * wt;
@@ -211,13 +229,31 @@ export function solvePoisson(
   // r doubles as the finest level's right-hand side, z as its solution.
   const r = rhs;
   for (let i = 0; i < n; i++) if (!mask[i]) r[i] = 0;
+  let diag: Float32Array | null = null;
+  const weights = opts.weights;
+  if (weights) {
+    diag = new Float32Array(n);
+    const { right, down, border } = weights;
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = 0; x < w; x++) {
+        const i = row + x;
+        if (!mask[i]) continue;
+        diag[i] =
+          (x > 0 ? right[i - 1] : border) +
+          (x < w - 1 ? right[i] : border) +
+          (y > 0 ? down[i - w] : border) +
+          (y < h - 1 ? down[i] : border);
+      }
+    }
+  }
   const top: Level = {
     w,
     h,
     mask,
-    diag: null,
-    wR: null,
-    wD: null,
+    diag,
+    wR: weights ? weights.right : null,
+    wD: weights ? weights.down : null,
     u: new Float32Array(n),
     rhs: r,
     res: new Float32Array(n),
