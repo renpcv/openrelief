@@ -48,9 +48,10 @@ USING THE PAGE
    it, then move, rotate or scale it (the Uniform scale slider scales evenly).
    The relief is taken from the current view.
 3. Adjust the relief settings and press "Generate relief".
-4. Set the size in millimetres and export STL, OBJ, PNG, EXR or PFM. Sizes are
-   for the finished piece, whatever scale the model was made in; changing the
-   long side scales the depth and base plate with it unless you untick that.
+4. Set the size in millimetres and export STL, OBJ, PNG, EXR or PFM. These set
+   how big the finished relief is; the size of the imported model doesn't
+   matter. Changing the long side scales the depth and base plate with it
+   unless you untick that.
 
 
 CHANGING IT

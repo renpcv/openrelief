@@ -303,16 +303,26 @@ generateBtn.onclick = generate;
 
 // Changing the long side rescales the relief depth and base plate with it, so
 // the piece keeps its proportions (a 3 mm piece shouldn't keep a 6 mm relief).
-let lastSize = num('size');
-input('size').addEventListener('change', () => {
+// The proportions are remembered unrounded, and the fields follow as you
+// type, so stepping through intermediate values ("1", "15", "150") is harmless.
+const linked = ['depth', 'base'] as const;
+const ratio = { depth: 0, base: 0 };
+function rememberProportions(): void {
+  const size = num('size');
+  if (size > 0) for (const id of linked) ratio[id] = num(id) / size;
+}
+rememberProportions();
+input('size').addEventListener('input', () => {
   const size = num('size');
   if (!(size > 0)) return;
-  if (input('linkSize').checked && lastSize > 0 && size !== lastSize) {
-    const factor = size / lastSize;
-    for (const id of ['depth', 'base']) input(id).value = String(Number((num(id) * factor).toPrecision(4)));
+  if (input('linkSize').checked) {
+    for (const id of linked) input(id).value = String(Number((ratio[id] * size).toPrecision(4)));
+  } else {
+    rememberProportions();
   }
-  lastSize = size;
 });
+for (const id of linked) input(id).addEventListener('input', rememberProportions);
+input('linkSize').addEventListener('change', rememberProportions);
 
 for (const id of ['size', 'depth', 'base', 'direction']) input(id).addEventListener('change', updatePreview);
 
