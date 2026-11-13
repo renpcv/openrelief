@@ -97,7 +97,23 @@ function renderModelList(): void {
     }),
   );
   generateBtn.disabled = view.models.length === 0 || worker !== null;
+  syncScaleSlider();
 }
+
+// Uniform scale of the selected model. The slider is logarithmic (0.05x to 20x)
+// so small and large sizes are equally easy to reach.
+const scaleSlider = input('uniformScale');
+function syncScaleSlider(): void {
+  const scale = view.selectionScale;
+  scaleSlider.disabled = !view.selection;
+  scaleSlider.value = String(Math.log10(scale));
+  $('#uniformScaleValue').textContent = view.selection ? `${scale.toPrecision(3)}×` : '';
+}
+scaleSlider.addEventListener('input', () => {
+  const scale = 10 ** Number(scaleSlider.value);
+  view.setSelectionScale(scale);
+  $('#uniformScaleValue').textContent = `${scale.toPrecision(3)}×`;
+});
 view.onSelect = renderModelList;
 view.onChange = renderModelList;
 
@@ -139,7 +155,7 @@ window.addEventListener('keydown', (e) => {
 // ------------------------------------------------------------------ settings
 
 function refreshSliders(): void {
-  for (const label of document.querySelectorAll<HTMLLabelElement>('label.slider')) {
+  for (const label of document.querySelectorAll<HTMLLabelElement>('label.slider:not(.custom)')) {
     label.querySelector('output')!.textContent = label.querySelector('input')!.value;
   }
   const mode = $<HTMLSelectElement>('#mode').value;
@@ -226,7 +242,9 @@ function generate(): void {
       for (const b of document.querySelectorAll<HTMLButtonElement>('#exports button')) b.disabled = false;
       showMode('relief');
       const solver = m.iterations ? `, ${m.iterations} solver iterations` : '';
-      setStatus(`${width} × ${height} px in ${(m.ms / 1000).toFixed(1)} s${solver}`);
+      // Say so when hollows dip below the background, since that uses up part of the relief depth.
+      const below = m.background > 0.02 ? `, hollows use ${Math.round(m.background * 100)}% of depth below the background` : '';
+      setStatus(`${width} × ${height} px in ${(m.ms / 1000).toFixed(1)} s${solver}${below}`);
     }
   };
   worker.onerror = (e) => {

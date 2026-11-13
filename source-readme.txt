@@ -20,6 +20,8 @@ The full project, as TypeScript.
 Other commands:
    npm test         runs the unit tests
    npm run build    builds the page into dist/ and rebuilds this zip
+   npm run deploy   builds, then publishes dist/ to the gh-pages branch of
+                    your own GitHub repository (the "origin" remote)
 
 
 web/  PUT IT ONLINE
@@ -43,7 +45,8 @@ USING THE PAGE
 1. Import OBJ or STL models (button, or drag them onto the page), or try the
    demo model.
 2. Drag to orbit, right-drag to pan, scroll to zoom. Click a model to select
-   it, then move, rotate or scale it. The relief is taken from the current view.
+   it, then move, rotate or scale it (the Uniform scale slider scales evenly).
+   The relief is taken from the current view.
 3. Adjust the relief settings and press "Generate relief".
 4. Set the size in millimetres and export STL, OBJ, PNG, EXR or PFM.
 

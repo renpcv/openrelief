@@ -26,6 +26,9 @@
           <button data-mode="rotate">Rotate</button>
           <button data-mode="scale">Scale</button>
         </div>
+        <label class="slider custom">Uniform scale <output id="uniformScaleValue"></output>
+          <input id="uniformScale" type="range" min="-1.3" max="1.3" step="0.005" value="0" disabled />
+        </label>
         <div class="row" id="views" role="group" aria-label="View direction">
           <button data-dir="0,0,1">Front</button>
           <button data-dir="0,0,-1">Back</button>
@@ -34,7 +37,7 @@
           <button data-dir="0,1,0.0001">Top</button>
           <button id="fit">Fit</button>
         </div>
-        <p class="hint">Drag to orbit, right-drag to pan, scroll to zoom. Click a model to select it, Delete removes it. The relief is taken from the current view.</p>
+        <p class="hint">Drag to orbit, right-drag to pan, scroll to zoom. Click a model to select it, Delete removes it. With the Scale tool, drag an axis to stretch or the centre cube to scale evenly. The relief is taken from the current view.</p>
       </section>
 
       <section>
@@ -117,7 +120,7 @@
           <button data-format="exr" disabled>EXR 32-bit</button>
           <button data-format="pfm" disabled>PFM</button>
         </div>
-        <p class="hint">Meshes are watertight solids in millimetres. PNG is normalised 0&ndash;1; EXR and PFM hold heights in mm.</p>
+        <p class="hint">Meshes are watertight solids in millimetres. PNG is normalised 0&ndash;1; EXR and PFM hold heights in mm. Relief depth runs from the lowest point to the highest; hollows can sit below the background.</p>
       </section>
 
       <section>

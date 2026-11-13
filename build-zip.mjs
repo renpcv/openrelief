@@ -26,7 +26,7 @@ function walk(dir) {
 
 const source = [
   'README.md', 'LICENSE', 'package.json', 'package-lock.json', 'tsconfig.json', 'vite.config.ts',
-  '.gitignore', 'index.html', 'build-zip.mjs', 'source-readme.txt',
+  '.gitignore', 'index.html', 'build-zip.mjs', 'deploy.mjs', 'source-readme.txt',
   ...walk('src'), ...walk('tests'),
 ].filter((f) => fs.existsSync(path.join(root, f)));
 const web = walk('dist').filter((f) => f !== `dist/${OUT}`);

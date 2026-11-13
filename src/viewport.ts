@@ -170,6 +170,19 @@ export class Viewport {
     return this.selected;
   }
 
+  /** Overall size of the selected model: the geometric mean of its three scale factors. */
+  get selectionScale(): number {
+    const s = this.selected?.object.scale;
+    return s ? Math.cbrt(Math.abs(s.x * s.y * s.z)) || 1 : 1;
+  }
+
+  /** Scales the selected model uniformly to the given overall size, keeping its proportions. */
+  setSelectionScale(scale: number): void {
+    if (!this.selected || !(scale > 0)) return;
+    this.selected.object.scale.multiplyScalar(scale / this.selectionScale);
+    this.invalidate();
+  }
+
   setTransformMode(mode: TransformMode): void {
     this.gizmo.setMode(mode);
     this.invalidate();

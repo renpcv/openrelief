@@ -9,6 +9,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build && node build-zip.mjs",
     "preview": "vite preview",
+    "deploy": "npm run build && node deploy.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

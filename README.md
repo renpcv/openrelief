@@ -23,11 +23,16 @@ holds a `source/` copy of the project and a ready-to-host `web/` copy of the
 built page. `npm run build` rebuilds it (via `build-zip.mjs`); run that before
 publishing so the download matches the code.
 
+## Publishing
+
+`npm run deploy` builds the page and pushes `dist/` to the repository's
+`gh-pages` branch, which GitHub Pages serves.
+
 ## What it does
 
 - **Import** OBJ and STL (button or drag and drop), several models per scene.
-- **Compose**: move, rotate and scale each model; orbit to any view. The relief
-  is taken from the current camera direction.
+- **Compose**: move, rotate and scale each model (a slider scales evenly);
+  orbit to any view. The relief is taken from the current camera direction.
 - **Generate** at 512 to 8192 px on the long side:
   - *Compressed* - true bas-relief. Depth is squeezed non-linearly so the piece
     stays shallow while overlaps and fine detail remain readable.
@@ -36,7 +41,8 @@ publishing so the download matches the code.
     meets the background), inner edge prominence (steps where one part passes
     in front of another), detail emphasis, smoothing and margin.
 - **Size** the result in millimetres: long side, relief depth, base plate, and
-  raised or sunken.
+  raised or sunken. Hollows that end up deeper than the background (the inside
+  of an open box, say) keep their shape and sit below the background plane.
 - **Export** a watertight STL or OBJ solid, a 16-bit PNG depth map, or 32-bit
   float EXR / PFM depth maps.
 

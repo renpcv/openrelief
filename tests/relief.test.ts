@@ -61,10 +61,12 @@ describe('generateRelief', () => {
     let max = 0;
     for (let i = 0; i < r.height.length; i++) {
       expect(r.height[i]).toBeGreaterThanOrEqual(0);
-      if (!mask[i]) expect(r.height[i]).toBe(0);
+      if (!mask[i]) expect(r.height[i]).toBe(Math.fround(r.background));
       max = Math.max(max, r.height[i]);
     }
     expect(max).toBeCloseTo(1, 5);
+    // A convex shape has no real recesses, so the background is (almost) the lowest level.
+    expect(r.background).toBeLessThan(0.01);
     // The sphere's centre should be its highest region.
     const c = (size >> 1) * size + (size >> 1);
     expect(r.height[c]).toBeGreaterThan(0.9);
@@ -110,6 +112,32 @@ describe('generateRelief', () => {
     const plateau = r.height[40 * size + 40];
     const share = (top - plateau) / top;
     expect(share).toBeGreaterThan(6 / 406 * 5);
+  });
+
+  it('keeps recesses that fall below the background instead of cutting them off flat', () => {
+    // An open box seen from the front: a raised rim around a floor that
+    // slopes far away from the viewer, well below the level of the rim's base.
+    const size = 128;
+    const depth = new Float32Array(size * size);
+    const mask = new Uint8Array(size * size);
+    for (let y = 16; y < 112; y++)
+      for (let x = 16; x < 112; x++) {
+        const i = y * size + x;
+        mask[i] = 1;
+        const rim = x < 22 || x >= 106 || y < 22 || y >= 106;
+        depth[i] = rim ? 600 : 500 - (x - 22) * 5;
+      }
+    const r = generateRelief(size, size, depth, mask, { ...defaultParams, detail: 0 });
+    // The background plane sits above the lowest point...
+    expect(r.background).toBeGreaterThan(0.05);
+    expect(r.height[0]).toBeCloseTo(r.background, 6);
+    let min = 1;
+    for (let i = 0; i < r.height.length; i++) min = Math.min(min, r.height[i]);
+    expect(min).toBeCloseTo(0, 6);
+    // ...and the floor keeps descending all the way across, rather than
+    // ending in a flat, cut-off patch.
+    const row = 64 * size;
+    for (let x = 24; x < 104; x++) expect(r.height[row + x + 1]).toBeLessThan(r.height[row + x]);
   });
 
   it('raw mode is a linear rescale', () => {

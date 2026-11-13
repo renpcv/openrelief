@@ -53,8 +53,10 @@ export const defaultParams: ReliefParams = {
 };
 
 export interface ReliefResult {
-  /** Relief heights normalised to 0..1 (0 = background plane). */
+  /** Relief heights normalised to 0..1 (0 = lowest point, 1 = highest). */
   height: Float32Array;
+  /** Level of the background plane: 0 unless parts of the relief are recessed below it. */
+  background: number;
   width: number;
   heightPx: number;
   solverCycles: number;
@@ -112,18 +114,25 @@ export function generateRelief(
     out = maskedBlur(w, h, out, mask, params.smoothing);
   }
 
-  // Normalise: background stays at 0, highest point becomes 1.
+  // Normalise to 0..1. Normally the background is the lowest level (0). Deep
+  // recesses (the inside of an open box, say) can come out lower than the
+  // background. Cutting them off at the background would leave a flat patch,
+  // and squeezing them above it creases the surface where it crosses that
+  // level, so they keep their shape: the lowest point becomes 0 and the
+  // background plane sits above it.
   let max = 0;
+  let min = 0;
   for (let i = 0; i < n; i++) {
-    if (!mask[i] || out[i] < 0) out[i] = 0;
-    else if (out[i] > max) max = out[i];
+    if (!mask[i]) continue;
+    if (out[i] > max) max = out[i];
+    if (out[i] < min) min = out[i];
   }
-  if (max > 0) {
-    const inv = 1 / max;
-    for (let i = 0; i < n; i++) out[i] *= inv;
-  }
+  const range = max - min;
+  const background = range > 0 && min < 0 ? -min / range : 0;
+  const inv = range > 0 ? 1 / range : 0;
+  for (let i = 0; i < n; i++) out[i] = mask[i] ? (out[i] - min) * inv : background;
   onProgress('Done', 1);
-  return { height: out, width: w, heightPx: h, solverCycles: cycles, solverResidual: rel };
+  return { height: out, width: w, heightPx: h, background, solverCycles: cycles, solverResidual: rel };
 }
 
 /** Target difference (to - from) for one pixel edge. */

@@ -11,7 +11,7 @@ export interface ReliefRequest {
 
 export type ReliefMessage =
   | { type: 'progress'; stage: string; fraction: number }
-  | { type: 'done'; height: Float32Array; iterations: number; residual: number; ms: number }
+  | { type: 'done'; height: Float32Array; background: number; iterations: number; residual: number; ms: number }
   | { type: 'error'; message: string };
 
 const post = (m: ReliefMessage, transfer: Transferable[] = []) =>
@@ -28,6 +28,7 @@ self.onmessage = (e: MessageEvent<ReliefRequest>) => {
       {
         type: 'done',
         height: r.height,
+        background: r.background,
         iterations: r.solverCycles,
         residual: r.solverResidual,
         ms: performance.now() - t0,
