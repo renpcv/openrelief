@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenRelief</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <aside id="sidebar">
+      <header>
+        <h1>OpenRelief</h1>
+        <p>3D model to bas-relief</p>
+      </header>
+
+      <section>
+        <h2>Models</h2>
+        <div class="row">
+          <button id="import">Import OBJ / STL&hellip;</button>
+          <button id="demo">Demo model</button>
+          <input id="file" type="file" accept=".obj,.stl" multiple hidden />
+        </div>
+        <ul id="models"></ul>
+        <div class="row" id="transform" role="group" aria-label="Transform tool">
+          <button data-mode="translate" class="on">Move</button>
+          <button data-mode="rotate">Rotate</button>
+          <button data-mode="scale">Scale</button>
+        </div>
+        <div class="row" id="views" role="group" aria-label="View direction">
+          <button data-dir="0,0,1">Front</button>
+          <button data-dir="0,0,-1">Back</button>
+          <button data-dir="1,0,0">Right</button>
+          <button data-dir="-1,0,0">Left</button>
+          <button data-dir="0,1,0.0001">Top</button>
+          <button id="fit">Fit</button>
+        </div>
+        <p class="hint">Drag to orbit, right-drag to pan, scroll to zoom. Click a model to select it, Delete removes it. The relief is taken from the current view.</p>
+      </section>
+
+      <section>
+        <h2>Relief</h2>
+        <label>Type
+          <select id="mode">
+            <option value="compressed">Compressed (bas-relief)</option>
+            <option value="raw">Raw geometry (linear depth)</option>
+          </select>
+        </label>
+        <label>Resolution
+          <select id="resolution">
+            <option>512</option>
+            <option selected>1024</option>
+            <option>2048</option>
+            <option>4096</option>
+            <option>8192</option>
+          </select>
+        </label>
+        <label class="slider" data-for-mode="compressed">Depth compression <output></output>
+          <input id="compression" type="range" min="0" max="20" step="0.5" value="5" />
+        </label>
+        <label class="slider">Contour prominence <output></output>
+          <input id="silhouette" type="range" min="0" max="3" step="0.05" value="0.4" />
+        </label>
+        <label class="slider" data-for-mode="compressed">Inner edge prominence <output></output>
+          <input id="occlusion" type="range" min="0" max="3" step="0.05" value="0.4" />
+        </label>
+        <label class="slider">Detail emphasis <output></output>
+          <input id="detail" type="range" min="0" max="3" step="0.05" value="0.5" />
+        </label>
+        <label class="slider">Smoothing (px) <output></output>
+          <input id="smoothing" type="range" min="0" max="5" step="0.25" value="0" />
+        </label>
+        <label class="slider">Margin (%) <output></output>
+          <input id="margin" type="range" min="0" max="25" step="1" value="5" />
+        </label>
+        <details>
+          <summary>Advanced</summary>
+          <label class="slider">Edge detection slope <output></output>
+            <input id="tau" type="range" min="1" max="30" step="0.5" value="6" />
+          </label>
+          <label class="slider">Detail radius (%) <output></output>
+            <input id="detailRadius" type="range" min="0.2" max="5" step="0.1" value="1" />
+          </label>
+        </details>
+        <button id="generate" class="primary" disabled>Generate relief</button>
+        <div id="progress" hidden><div></div><span></span></div>
+      </section>
+
+      <section>
+        <h2>Size</h2>
+        <div class="grid">
+          <label>Long side (mm)<input id="size" type="number" min="1" step="1" value="150" /></label>
+          <label>Relief depth (mm)<input id="depth" type="number" min="0.01" step="0.5" value="6" /></label>
+          <label>Base plate (mm)<input id="base" type="number" min="0" step="0.5" value="3" /></label>
+          <label>Direction
+            <select id="direction">
+              <option value="raised">Raised</option>
+              <option value="sunken">Sunken</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Export</h2>
+        <label>Mesh detail (max vertices per side)
+          <select id="meshRes">
+            <option>256</option>
+            <option>512</option>
+            <option selected>1024</option>
+            <option>2048</option>
+          </select>
+        </label>
+        <div class="row" id="exports">
+          <button data-format="stl" disabled>STL</button>
+          <button data-format="obj" disabled>OBJ</button>
+          <button data-format="png" disabled>PNG 16-bit</button>
+          <button data-format="exr" disabled>EXR 32-bit</button>
+          <button data-format="pfm" disabled>PFM</button>
+        </div>
+        <p class="hint">Meshes are watertight solids in millimetres. PNG is normalised 0&ndash;1; EXR and PFM hold heights in mm.</p>
+      </section>
+
+      <section>
+        <a id="download-source" href="openrelief-source.zip" download>Download source code (.zip)</a>
+      </section>
+    </aside>
+
+    <main>
+      <nav id="tabs" role="tablist">
+        <button data-view="scene" class="on" role="tab">Scene</button>
+        <button data-view="relief" role="tab" disabled>Relief</button>
+        <span id="status"></span>
+      </nav>
+      <div id="viewport"></div>
+      <div id="drop">Drop OBJ or STL files to import</div>
+      <div id="notice" hidden></div>
+    </main>
+    <!-- Plain script (runs even when the app itself can't): says so if the page is
+         still loading, was opened as a file, or failed to start. -->
+    <script>
+      (function () {
+        var status = document.getElementById('status');
+        var notice = document.getElementById('notice');
+        function fail(text) {
+          status.textContent = '';
+          notice.textContent = text;
+          notice.hidden = false;
+        }
+        if (location.protocol === 'file:') {
+          fail("This page can't run when opened directly as a file, so its buttons won't respond. " +
+            'Run "npm run dev" in the source folder and open the address it prints, or put the web folder on a web host.');
+          return;
+        }
+        status.textContent = 'Loading…';
+        setTimeout(function () {
+          if (!window.openrelief) fail('The app did not start. Reload the page; if it still fails, the browser console shows why.');
+        }, 10000);
+      })();
+    </script>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
