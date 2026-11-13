@@ -1,6 +1,6 @@
-/* Visual conventions shared with the "Cycle" project: black page, monospace,
-   muted text with brighter titles, underlined text links instead of boxed
-   buttons, square corners, no panels or dividers. */
+/* Black page, the browser's default serif, muted text with brighter values,
+   underlined text links instead of boxed buttons, square corners, no panels
+   or dividers. */
 :root {
   --bg: #000000;          /* page background; every dark surface uses this */
   --fg: #f2f2f2;          /* titles, values and the active choice */
@@ -13,7 +13,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--muted); }
 body {
-  font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font: 12px/1.45 serif;
   display: grid;
   grid-template-columns: var(--config-width) 1fr;
 }
