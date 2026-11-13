@@ -140,6 +140,32 @@ describe('generateRelief', () => {
     for (let x = 24; x < 104; x++) expect(r.height[row + x + 1]).toBeLessThan(r.height[row + x]);
   });
 
+  it('smoothing softens the step where the model meets the background', () => {
+    const size = 96;
+    const depth = new Float32Array(size * size);
+    const mask = new Uint8Array(size * size);
+    for (let y = 24; y < 72; y++)
+      for (let x = 24; x < 72; x++) {
+        mask[y * size + x] = 1;
+        depth[y * size + x] = 50;
+      }
+    const sharp = generateRelief(size, size, depth, mask, { ...defaultParams, detail: 0 });
+    const soft = generateRelief(size, size, depth, mask, { ...defaultParams, detail: 0, smoothing: 2 });
+    const row = 48 * size;
+    const step = (r: { height: Float32Array }) => r.height[row + 24] - r.height[row + 23];
+    // Unsmoothed, the whole rise happens between two neighbouring pixels...
+    expect(sharp.height[row + 23]).toBe(0);
+    expect(step(sharp)).toBeGreaterThan(0.3);
+    // ...smoothed, it is spread out: a smaller jump, and background next to the model is lifted.
+    expect(step(soft)).toBeLessThan(step(sharp) * 0.6);
+    expect(soft.height[row + 23]).toBeGreaterThan(0.01);
+    // Far from the model the background is still flat and at the bottom.
+    expect(soft.height[0]).toBeCloseTo(0, 5);
+    let max = 0;
+    for (const v of soft.height) max = Math.max(max, v);
+    expect(max).toBeCloseTo(1, 5);
+  });
+
   it('raw mode is a linear rescale', () => {
     const size = 64;
     const { depth, mask } = sphereScene(size, 25);

@@ -65,7 +65,7 @@ export function buildGrid(
 }
 
 /** Grid indices of the outline, counter-clockwise when seen from +Z. */
-function boundaryLoop(gw: number, gh: number): number[] {
+export function boundaryLoop(gw: number, gh: number): number[] {
   const loop: number[] = [];
   const last = gh - 1;
   for (let x = 0; x < gw - 1; x++) loop.push(last * gw + x); // bottom edge, left to right

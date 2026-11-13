@@ -37,7 +37,7 @@ export interface ReliefParams {
   detail: number;
   /** Unsharp-mask radius, as a fraction of the image's long side. */
   detailRadius: number;
-  /** Final smoothing radius in pixels (0 = off). */
+  /** Final smoothing radius in pixels, applied to the whole relief including its outline (0 = off). */
   smoothing: number;
 }
 
@@ -109,11 +109,6 @@ export function generateRelief(
     for (let i = 0; i < n; i++) if (mask[i]) out[i] += params.detail * (out[i] - blurred[i]);
   }
 
-  if (params.smoothing > 0) {
-    onProgress('Smoothing', 0);
-    out = maskedBlur(w, h, out, mask, params.smoothing);
-  }
-
   // Normalise to 0..1. Normally the background is the lowest level (0). Deep
   // recesses (the inside of an open box, say) can come out lower than the
   // background. Cutting them off at the background would leave a flat patch,
@@ -131,8 +126,29 @@ export function generateRelief(
   const background = range > 0 && min < 0 ? -min / range : 0;
   const inv = range > 0 ? 1 / range : 0;
   for (let i = 0; i < n; i++) out[i] = mask[i] ? (out[i] - min) * inv : background;
+
+  // Final smoothing runs over the whole image, background included, so it
+  // also softens the step where a model meets the background (and the
+  // pixel-stair jaggies along it), not just the surface inside the outline.
+  let level = background;
+  if (params.smoothing > 0) {
+    onProgress('Smoothing', 0);
+    out = maskedBlur(w, h, out, new Uint8Array(n).fill(1), params.smoothing);
+    // Blurring pulls the extremes in slightly; stretch back to the full 0..1.
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (let i = 0; i < n; i++) {
+      if (out[i] < lo) lo = out[i];
+      if (out[i] > hi) hi = out[i];
+    }
+    if (hi > lo) {
+      const k = 1 / (hi - lo);
+      for (let i = 0; i < n; i++) out[i] = (out[i] - lo) * k;
+      level = Math.min(1, Math.max(0, (background - lo) * k));
+    }
+  }
   onProgress('Done', 1);
-  return { height: out, width: w, heightPx: h, background, solverCycles: cycles, solverResidual: rel };
+  return { height: out, width: w, heightPx: h, background: level, solverCycles: cycles, solverResidual: rel };
 }
 
 /** Target difference (to - from) for one pixel edge. */

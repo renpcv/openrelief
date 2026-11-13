@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
-import type { HeightGrid } from './export/mesh';
+import { boundaryLoop, type HeightGrid } from './export/mesh';
 
 export interface Model {
   id: number;
@@ -333,6 +333,28 @@ export class Viewport {
       this.reliefGroup.remove(child);
     }
     this.reliefGroup.add(new THREE.Mesh(geo, this.reliefMaterial));
+
+    // Side walls and underside, so the preview shows the same solid block
+    // (base plate included) that the mesh exports contain.
+    const loop = boundaryLoop(w, h);
+    const sides = new Float32Array((loop.length * 6 + 6) * 3);
+    let s = 0;
+    const put = (x: number, y: number, zz: number) => {
+      sides[s++] = x; sides[s++] = y; sides[s++] = zz;
+    };
+    for (let k = 0; k < loop.length; k++) {
+      const i = loop[k] * 3;
+      const j = loop[(k + 1) % loop.length] * 3;
+      put(pos[i], pos[i + 1], 0); put(pos[j], pos[j + 1], 0); put(pos[j], pos[j + 1], pos[j + 2]);
+      put(pos[i], pos[i + 1], 0); put(pos[j], pos[j + 1], pos[j + 2]); put(pos[i], pos[i + 1], pos[i + 2]);
+    }
+    put(-ox, -oy, 0); put(-ox, oy, 0); put(ox, oy, 0);
+    put(-ox, -oy, 0); put(ox, oy, 0); put(ox, -oy, 0);
+    const sideGeo = new THREE.BufferGeometry();
+    sideGeo.setAttribute('position', new THREE.BufferAttribute(sides, 3));
+    sideGeo.computeVertexNormals();
+    this.reliefGroup.add(new THREE.Mesh(sideGeo, this.reliefMaterial));
+
     if (first) delete this.savedViews.relief;
     this.invalidate();
   }
