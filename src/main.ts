@@ -328,6 +328,18 @@ async function exportRelief(format: string): Promise<void> {
 }
 segmented('#exports', (b) => void exportRelief(b.dataset.format!), false);
 
+// References: open under their link, like a "show instructions" panel.
+const references = $('#references');
+const showReferences = $<HTMLButtonElement>('#show-references');
+function setReferencesOpen(open: boolean): void {
+  references.hidden = !open;
+  showReferences.textContent = open ? 'Hide references' : 'Show references';
+  showReferences.setAttribute('aria-expanded', String(open));
+  if (open) references.scrollIntoView({ block: 'nearest' });
+}
+showReferences.onclick = () => setReferencesOpen(references.hidden);
+$('#hide-references').onclick = () => setReferencesOpen(false);
+
 // Debug handle for the console and automated checks; index.html also uses it to tell that the app started.
 Object.assign(window, { openrelief: { view, getRelief: () => relief, generate, exportBaseName } });
 setStatus('Ready: import a model or try the demo');

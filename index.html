@@ -131,7 +131,43 @@
         <p class="hint">Meshes are watertight solids in millimetres. PNG is normalised 0&ndash;1; EXR and PFM hold heights in mm. Relief depth runs from the lowest point to the highest; hollows can sit below the background.</p>
       </section>
 
-      <section>
+      <section id="about">
+        <button id="show-references" type="button" aria-expanded="false" aria-controls="references">Show references</button>
+        <div id="references" hidden>
+          <p>The relief method follows published research on gradient-domain bas-relief. The code follows the
+            approach of these papers; it is not a line-by-line implementation of any one of them.</p>
+          <p>T. Weyrich, J. Deng, C. Barnes, S. Rusinkiewicz, A. Finkelstein.
+            <b>Digital Bas-Relief from 3D Scenes.</b> ACM Transactions on Graphics 26(3) (Proc. SIGGRAPH), 2007.
+            The main source: working on depth gradients, turning silhouettes and occlusion edges into controlled
+            steps, and compressing slopes with a log curve.
+            <a href="https://reality.cs.ucl.ac.uk/projects/relief/relief.html" target="_blank" rel="noopener">Project page</a>,
+            <a href="https://gfx.cs.princeton.edu/pubs/Weyrich_2007_DBF/relief.pdf" target="_blank" rel="noopener">PDF</a></p>
+          <p>J. Kerber, A. Tevs, A. Belyaev, R. Zayer, H.-P. Seidel.
+            <b>Feature Sensitive Bas Relief Generation.</b> IEEE International Conference on Shape Modeling and
+            Applications (SMI), 2009, pp. 148&ndash;154. Informed the detail-emphasis step.
+            <a href="https://doi.org/10.1109/SMI.2009.5170176" target="_blank" rel="noopener">DOI</a>,
+            <a href="https://hpdgp.mpi-inf.mpg.de/pappe/br2009.pdf" target="_blank" rel="noopener">PDF</a></p>
+          <p>R. Fattal, D. Lischinski, M. Werman.
+            <b>Gradient Domain High Dynamic Range Compression.</b> ACM Transactions on Graphics 21(3)
+            (Proc. SIGGRAPH), 2002, pp. 249&ndash;256. The origin of the &ldquo;compress the gradients, then solve a
+            Poisson equation&rdquo; idea that the bas-relief papers build on.
+            <a href="https://www.cs.huji.ac.il/~danix/hdr/" target="_blank" rel="noopener">Project page</a></p>
+          <p><b>Also built on</b></p>
+          <p><b>Solver:</b> conjugate gradients preconditioned by aggregation multigrid; standard numerical methods
+            rather than a specific paper. General background: W. Briggs, V. E. Henson, S. McCormick,
+            A Multigrid Tutorial, 2nd ed., SIAM, 2000.</p>
+          <p><b>Smoothing:</b> a Gaussian blur approximated by three box-filter passes, a common image-processing
+            technique.</p>
+          <p><b>3D view and file loading:</b>
+            <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> (MIT licence), including its
+            OBJ and STL loaders and its orbit and transform controls.</p>
+          <p><b>Export formats:</b> written from their published specifications:
+            <a href="https://www.w3.org/TR/png/" target="_blank" rel="noopener">PNG</a>,
+            <a href="https://openexr.com/en/latest/OpenEXRFileLayout.html" target="_blank" rel="noopener">OpenEXR</a>,
+            <a href="https://www.pauldebevec.com/Research/HDR/PFM/" target="_blank" rel="noopener">PFM</a>, and the
+            widely documented binary STL and Wavefront OBJ formats.
+            <button id="hide-references" type="button">hide</button></p>
+        </div>
         <a id="download-source" href="openrelief-source.zip" download>Download source code (.zip)</a>
       </section>
     </aside>
