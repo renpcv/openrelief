@@ -67,8 +67,6 @@ CHANGING IT
 REFERENCES
 ----------
 The relief method follows published research on gradient-domain bas-relief.
-The code follows the approach of these papers; it is not a line-by-line
-implementation of any one of them.
 
 - T. Weyrich, J. Deng, C. Barnes, S. Rusinkiewicz, A. Finkelstein.
   "Digital Bas-Relief from 3D Scenes." ACM Transactions on Graphics 26(3)
